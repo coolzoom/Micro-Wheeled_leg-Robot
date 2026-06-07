@@ -1,6 +1,6 @@
 #include "xbox_dev.h"
 
-xbox gamepad("45:52:C1:2D:C1:1C");
+xbox gamepad("65:D9:64:B2:08:60");
 
 /**
  * @brief 手柄进程函数
