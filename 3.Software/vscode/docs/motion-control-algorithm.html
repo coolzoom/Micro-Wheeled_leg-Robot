@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Micro-Wheeled Leg Robot — 运动控制与算法说明</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --border: #2d3a4f;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --warn: #d29922;
+      --code-bg: #161b22;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+    }
+
+    nav h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      margin-bottom: 2px;
+    }
+
+    nav a:hover { background: var(--surface2); color: var(--text); }
+
+    main {
+      max-width: 960px;
+      padding: 2.5rem 3rem 4rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+
+    section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 1rem;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      margin: 1.5rem 0 0.75rem;
+      color: var(--accent2);
+    }
+
+    h4 {
+      font-size: 1rem;
+      margin: 1rem 0 0.5rem;
+      color: var(--text);
+    }
+
+    p { margin-bottom: 0.85rem; }
+
+    ul, ol {
+      margin: 0.5rem 0 1rem 1.5rem;
+    }
+
+    li { margin-bottom: 0.35rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--surface2);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+    code {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      background: var(--code-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.88em;
+      color: #f0883e;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: #c9d1d9;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+
+    .card-title {
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .flow {
+      font-family: "Cascadia Code", "Consolas", monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      white-space: pre;
+      overflow-x: auto;
+      color: #8b9cb3;
+    }
+
+    .formula {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: 0.8rem 1.2rem;
+      margin: 1rem 0;
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 1.05rem;
+    }
+
+    .tag {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-right: 0.4rem;
+    }
+
+    .warn-box {
+      background: rgba(210, 153, 34, 0.1);
+      border: 1px solid var(--warn);
+      border-radius: var(--radius);
+      padding: 0.9rem 1.1rem;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    .file-ref {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav { position: relative; height: auto; }
+      main { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h2>目录</h2>
+    <a href="#overview">1. 系统概述</a>
+    <a href="#architecture">2. 软件架构</a>
+    <a href="#tasks">3. 实时任务调度</a>
+    <a href="#fsm">4. 状态机 FSM</a>
+    <a href="#lqi">5. LQI 平衡算法</a>
+    <a href="#reference">6. 运动参考生成</a>
+    <a href="#leg">7. 腿部与 Roll 控制</a>
+    <a href="#modes">8. 各模式详解</a>
+    <a href="#jump">9. 跳跃算法</a>
+    <a href="#recover">10. 平衡恢复</a>
+    <a href="#sensor">11. 传感器与状态估计</a>
+    <a href="#motor">12. 电机驱动</a>
+    <a href="#params">13. 关键参数表</a>
+    <a href="#files">14. 源码索引</a>
+  </nav>
+
+  <main>
+    <h1>Micro-Wheeled Leg Robot</h1>
+    <p class="subtitle">运动控制与算法详细说明 · 固件 ver1.7.1 · 基于源码分析</p>
+
+    <!-- 1. 概述 -->
+    <section id="overview">
+      <h2>1. 系统概述</h2>
+      <p>本机器人是一台<strong>轮腿式自平衡小车</strong>：两轮差速驱动负责前进、后退与转向；两条 STS3032 舵机腿负责机身高度与侧倾（Roll）补偿。核心平衡控制采用 <strong>LQI（Linear Quadratic Integral）</strong>——在 LQR 状态反馈基础上，对线速度与偏航角速度引入积分项，消除稳态跟踪误差。</p>
+
+      <div class="card">
+        <div class="card-title">控制对象（6 维状态向量）</div>
+        <table>
+          <thead>
+            <tr><th>索引</th><th>符号</th><th>物理含义</th><th>来源</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>x₀</td><td>θ</td><td>俯仰角 pitch（rad）</td><td>MPU6050</td></tr>
+            <tr><td>x₁</td><td>θ̇</td><td>俯仰角速度 pitch_rate（rad/s）</td><td>MPU6050 陀螺仪</td></tr>
+            <tr><td>x₂</td><td>v − v<sub>ref</sub></td><td>线速度跟踪误差（m/s）</td><td>轮编码器 − 参考</td></tr>
+            <tr><td>x₃</td><td>ω − ω<sub>ref</sub></td><td>偏航角速度跟踪误差（rad/s）</td><td>MPU6050 − 参考</td></tr>
+            <tr><td>x₄</td><td>∫(v<sub>ref</sub> − v)dt</td><td>线速度积分项</td><td>控制器内部</td></tr>
+            <tr><td>x₅</td><td>∫(ω<sub>ref</sub> − ω)dt</td><td>偏航积分项</td><td>控制器内部</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">控制输出（2 维）</div>
+        <p>左右轮扭矩指令，经 SimpleFOC 以电压模式输出：</p>
+        <div class="formula">u<sub>L</sub> = Σ<sub>j=0..5</sub> K<sub>L,j</sub>(h) · x<sub>j</sub> &nbsp;&nbsp;|&nbsp;&nbsp; u<sub>R</sub> = Σ<sub>j=0..5</sub> K<sub>R,j</sub>(h) · x<sub>j</sub></div>
+        <p>其中增益矩阵 K 随腿高 h 实时调度（见第 5 节）。</p>
+      </div>
+    </section>
+
+    <!-- 2. 架构 -->
+    <section id="architecture">
+      <h2>2. 软件架构</h2>
+      <div class="flow">┌─────────────────────────────────────────────────────────────┐
+│                     loop_proc (1 ms)                        │
+│  ┌──────────┐   ┌──────────┐   ┌──────────────────────────┐ │
+│  │ 手柄/串口 │ → │ FSM.update│ → │ FSM.loop (模式行为)      │ │
+│  │ 输入采集  │   │ 模式切换  │   │ boot/sit/jump/balance    │ │
+│  └──────────┘   └──────────┘   └───────────┬──────────────┘ │
+│                                              │                │
+│                              ┌───────────────▼──────────────┐ │
+│                              │ lqi_loop — 平衡控制核心     │ │
+│                              │ 参考生成 → 状态反馈 → 电机   │ │
+│                              └──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+         ▲                                    │
+         │ 状态量                             │ output[0/1]
+┌────────┴────────┐                  ┌────────▼────────┐
+│ sensor_update   │                  │ motor_update    │
+│ (1 ms)          │                  │ (500 μs, FOC)   │
+│ MPU6050/编码器  │                  │ 三相 PWM 输出   │
+└─────────────────┘                  └─────────────────┘</div>
+
+      <p>控制逻辑分层如下：</p>
+      <ul>
+        <li><code>fsm</code>：顶层模式状态机，决定当前行为（站立、平衡、坐下、跳跃）。</li>
+        <li><code>controller</code>：各模式具体动作 + LQI 主循环。</li>
+        <li><code>controller_base</code>：运动参考平滑、增益调度、摄像头、复位。</li>
+        <li><code>lqi</code>：车辆模型参数、增益多项式、状态/参考/积分数据结构。</li>
+      </ul>
+    </section>
+
+    <!-- 3. 任务 -->
+    <section id="tasks">
+      <h2>3. 实时任务调度</h2>
+      <p class="file-ref">源码：<code>lib/system/start.cpp</code></p>
+      <table>
+        <thead>
+          <tr><th>任务</th><th>周期</th><th>优先级</th><th>功能</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>control_loop_task</code></td><td>1 ms</td><td>5（最高）</td><td>FSM + LQI 控制主循环</td></tr>
+          <tr><td><code>sensor_update_task</code></td><td>1 ms</td><td>4</td><td>IMU / 编码器采样，更新 LQI 状态</td></tr>
+          <tr><td><code>host_data_task</code></td><td>1 ms</td><td>3</td><td>上位机串口指令解析</td></tr>
+          <tr><td><code>xbox_dev_task</code></td><td>20 ms</td><td>2</td><td>蓝牙手柄轮询</td></tr>
+          <tr><td><code>motor_update_task</code></td><td>500 μs</td><td>默认</td><td>FOC 矢量调制，输出相电压</td></tr>
+          <tr><td><code>led_dev_task</code></td><td>1000 ms</td><td>2</td><td>LED 指示</td></tr>
+        </tbody>
+      </table>
+      <div class="warn-box">
+        <strong>注意：</strong>MPU6050 在 <code>sensor_update_proc</code> 中每 <strong>5 ms</strong> 更新一次（内部计数器限频），舵机位置每 <strong>100 ms</strong> 回读一次。
+      </div>
+    </section>
+
+    <!-- 4. FSM -->
+    <section id="fsm">
+      <h2>4. 状态机 FSM</h2>
+      <p class="file-ref">源码：<code>lib/controller/fsm.cpp</code>、<code>fsm.h</code></p>
+
+      <h3>4.1 顶层模式（mode_state）</h3>
+      <div class="flow">FIRST_BOOT ──(boot完成)──► BALANCE ◄──────────────────┐
+                                │  LB                    │  jump DONE
+                                ▼                        │  sit EXIT
+                              SIT ──(EXIT)───────────────┘
+                                │
+                                │  RS/Y/A/X/B
+                                ▼
+                              JUMP ──(DONE)──► BALANCE</div>
+
+      <table>
+        <thead>
+          <tr><th>模式</th><th>进入条件</th><th>行为概要</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>FIRST_BOOT</td><td>上电默认</td><td>等待 RB，伸腿，平衡恢复后进入 BALANCE</td></tr>
+          <tr><td>BALANCE</td><td>启动完成 / 坐下退出 / 跳跃结束</td><td>全功能平衡行驶，腿部调节</td></tr>
+          <tr><td>SIT</td><td>LB</td><td>后轮反转前倾坐下，RB 可重新站起</td></tr>
+          <tr><td>JUMP</td><td>RS/Y/A/X/B</td><td>执行跳跃序列后自动回 BALANCE</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 跳跃触发映射</h3>
+      <table>
+        <thead>
+          <tr><th>按键</th><th>jump_linear_direction</th><th>jump_turn_direction</th><th>动作</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>RS</td><td>0</td><td>0</td><td>原地跳</td></tr>
+          <tr><td>Y</td><td>+1</td><td>0</td><td>向前跳</td></tr>
+          <tr><td>A</td><td>−1</td><td>0</td><td>向后跳</td></tr>
+          <tr><td>X</td><td>0</td><td>+1</td><td>右转 90° 跳</td></tr>
+          <tr><td>B</td><td>0</td><td>−1</td><td>左转 90° 跳</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.3 每周期执行顺序</h3>
+      <p>在 <code>fsm::loop()</code> 中，先执行当前模式的专属逻辑（如 <code>leg_loop</code>、<code>jump_loop</code>），再统一调用 <code>set_cam_angle()</code> 与 <code>lqi_loop()</code>。即：<strong>无论何种模式，LQI 循环始终运行</strong>，但通过 <code>enable_balance</code>、<code>enable_steering</code>、<code>enable_motor</code> 标志位控制是否真正输出力矩。</p>
+    </section>
+
+    <!-- 5. LQI -->
+    <section id="lqi">
+      <h2>5. LQI 平衡算法</h2>
+      <p class="file-ref">源码：<code>lib/controller/algorithm/lqi.cpp</code>、<code>controller.cpp::lqi_loop()</code></p>
+
+      <h3>5.1 算法原理</h3>
+      <p>LQI 在经典倒立摆 LQR 基础上扩展：对速度通道引入积分状态，使机器人在有负载扰动或地面摩擦时仍能准确跟踪摇杆给出的线速度与转向指令。</p>
+
+      <div class="formula">
+        u = K(h) · [θ, θ̇, v−v<sub>ref</sub>, ω−ω<sub>ref</sub>, ∫e<sub>v</sub>, ∫e<sub>ω</sub>]<sup>T</sup>
+      </div>
+
+      <h3>5.2 增益调度（腿高自适应）</h3>
+      <p>腿高变化会改变整机质心与等效摆长，因此反馈增益随当前腿高 h 用<strong>三次多项式</strong>实时计算：</p>
+      <pre><code>K[i][j] = c₃·h³ + c₂·h² + c₁·h + c₀</code></pre>
+      <p>12 组多项式系数（每组 4 个）离线标定，存储于 <code>lqi_gain_poly[12][4]</code>。左右轮各用 6 个增益，对应 6 维状态。</p>
+      <p>腿高 h 由两侧舵机编码器计数经标定多项式反算（<code>leg_servo_count_to_height()</code>）：</p>
+      <pre><code>dCount = (|pos_L − 2048| + |pos_R − 2048|) / 2
+h = ((4.63e-12·dCount − 9.39e-08)·dCount + 1.54e-04)·dCount + 4.20e-02</code></pre>
+
+      <h3>5.3 lqi_loop 执行流程</h3>
+      <ol>
+        <li>更新增益矩阵 <code>update_feedback_gain(h)</code></li>
+        <li>读取摇杆，死区处理后映射为目标线速度 / 转向角速度</li>
+        <li>生成平滑参考 <code>ref.linear_vel</code>、<code>ref.yaw_rate</code> 及积分状态</li>
+        <li>组装状态向量 x[6]，按模式屏蔽部分通道（跳跃/恢复时）</li>
+        <li>矩阵乘法得 output[0/1]，乘以 output_blend 后送电机</li>
+      </ol>
+
+      <h3>5.4 摇杆输入映射</h3>
+      <table>
+        <thead>
+          <tr><th>摇杆轴</th><th>死区</th><th>映射</th><th>备注</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>axes[3]（右摇杆纵轴）</td><td>5%</td><td>±0.6 m/s 线速度</td><td>后退 ×0.8</td></tr>
+          <tr><td>axes[0]（左摇杆横轴）</td><td>5%</td><td>±4.0 rad/s 偏航率</td><td>参考取负号</td></tr>
+        </tbody>
+      </table>
+      <p>死区函数 <code>apply_axis_deadband</code>：在死区内输出 0；超出后线性重映射到 [−1, 1]，保证边界处连续。</p>
+
+      <h3>5.5 特殊状态下的通道屏蔽</h3>
+      <table>
+        <thead>
+          <tr><th>场景</th><th>屏蔽状态</th><th>目的</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>balance_recover_active</td>
+            <td>x₂~x₅ 置零；output_blend 0→1 渐变（220 ms）</td>
+            <td>恢复初期只做姿态平衡，不追速度</td>
+          </tr>
+          <tr>
+            <td>跳跃（非 PUSH 阶段）</td>
+            <td>x₂ 置零</td>
+            <td>腿部蹬地时线速度反馈易受干扰</td>
+          </tr>
+          <tr>
+            <td>跳跃（无转向指令）</td>
+            <td>x₃、x₅ 置零</td>
+            <td>避免腿部动作污染偏航控制</td>
+          </tr>
+          <tr>
+            <td>跳跃落地恢复</td>
+            <td>x₅ 置零</td>
+            <td>转向积分在落地阶段清零</td>
+          </tr>
+          <tr>
+            <td>enable_steering = 0</td>
+            <td>x₃、x₅ 置零</td>
+            <td>坐下/恢复等阶段禁止转向</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 6. 参考 -->
+    <section id="reference">
+      <h2>6. 运动参考生成</h2>
+      <p class="file-ref">源码：<code>lib/controller/controller_base.cpp</code></p>
+
+      <h3>6.1 线速度参考 update_linear_reference</h3>
+      <p>采用<strong>两级平滑</strong>：摇杆目标先经一阶低通（τ=24 ms），再经<strong>斜率限制</strong>生成最终参考 v<sub>ref</sub>。</p>
+      <table>
+        <thead>
+          <tr><th>参数</th><th>值</th><th>含义</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>max_ref_accel</td><td>1.60 m/s²</td><td>加速斜率上限</td></tr>
+          <tr><td>max_ref_decel</td><td>3.10 m/s²</td><td>减速斜率上限</td></tr>
+          <tr><td>max_release_decel</td><td>7.20 m/s²</td><td>松杆后快速归零斜率</td></tr>
+          <tr><td>release_duration</td><td>0.45 s</td><td>松杆释放窗口</td></tr>
+          <tr><td>release_stop_speed</td><td>0.035 m/s</td><td>判定已停稳的速度阈值</td></tr>
+        </tbody>
+      </table>
+
+      <h4>松杆释放（Release）机制</h4>
+      <p>摇杆回中后触发 <code>linear_release_active</code>：参考立即置 0，但<strong>保留速度积分</strong>一段时间（最多 450 ms），直到实际速度低于 0.035 m/s。这样可避免松杆瞬间积分被清零导致的"点头"或反向冲量。</p>
+
+      <h4>积分更新</h4>
+      <div class="formula">
+        ∫e<sub>v</sub> += (v<sub>ref</sub> − v<sub>actual</sub>) · dt，钳位 ±0.38
+      </div>
+      <p>在 release 窗口内冻结线速度积分，防止参考突变为 0 时积分饱和。</p>
+
+      <h3>6.2 偏航参考 update_yaw_reference</h3>
+      <p>低通时间常数 τ=9 ms（比线速度更灵敏）。参考直接赋值：</p>
+      <div class="formula">ω<sub>ref</sub> = −lpf(摇杆转向量)</div>
+      <p>取负号是因为手柄坐标系与机器人偏航正方向相反。积分钳位 ±0.55 rad·s 量级（累积误差积分）。</p>
+
+      <h3>6.3 跳跃模式下的参考覆盖</h3>
+      <p>跳跃时线速度/偏航参考不由摇杆决定，而由 <code>jump_linear_vel_cmd</code> 与 <code>jump_turn_yaw_rate_cmd</code> 注入（见第 9 节）。</p>
+    </section>
+
+    <!-- 7. 腿部 -->
+    <section id="leg">
+      <h2>7. 腿部与 Roll 控制</h2>
+      <p class="file-ref">源码：<code>controller.cpp::leg_loop()</code></p>
+
+      <h3>7.1 控制目标</h3>
+      <p>在平衡模式下，舵机腿承担两项任务：</p>
+      <ul>
+        <li><strong>高度调节</strong>：通过 <code>leg_height_base</code> 改变站立高度（方向键 ↑↓，步进 0.025）。</li>
+        <li><strong>Roll 补偿</strong>：PID 抑制机身左右倾斜（方向键 ←→ 调节 <code>roll_adjust</code> 偏置）。</li>
+      </ul>
+
+      <h3>7.2 舵机目标位置计算</h3>
+      <pre><code>roll_angle = LPF(MPU6050.roll_deg)
+leg_position_add = PID(roll_angle − roll_adjust)   // Kp=8, Ki=30
+
+left_pos  = 2048 + 8.4×(30 − leg_height_base) − leg_position_add
+right_pos = 2048 − 8.4×(30 − leg_height_base) − leg_position_add</code></pre>
+      <p>左右舵机镜像对称：左侧顺时针计数增大，右侧相反。结果钳位在 <code>SERVO_LEFT_MIN/MAX</code> 与 <code>SERVO_RIGHT_MIN/MAX</code> 范围内。</p>
+
+      <div class="card">
+        <div class="card-title">高度与 LQI 增益的耦合</div>
+        <p>腿高变化 → 更新 h → 重算 LQI 增益 K(h)。更高的机身（更小的 leg_height_base）对应更短的等效摆长，需要更大的反馈增益才能维持稳定。</p>
+      </div>
+    </section>
+
+    <!-- 8. 各模式 -->
+    <section id="modes">
+      <h2>8. 各模式详解</h2>
+
+      <h3>8.1 首次启动 FIRST_BOOT</h3>
+      <div class="flow">PREPARE → 关闭舵机力矩
+WAIT_FOR_SIGNAL → 等待 RB
+INIT → 舵机伸腿至站立位，reset()，begin_balance_recover()
+INIT_PREPARE → 350 ms 无电机/无平衡
+INIT_RECOVER → balance_recover_loop()
+DONE → 进入 BALANCE</div>
+
+      <h3>8.2 平衡模式 BALANCE</h3>
+      <p><code>enable_balance = enable_steering = enable_motor = 1</code>，每周期执行 <code>leg_loop()</code>。</p>
+      <p>按 <strong>LS</strong>（且无前进/后退摇杆输入）可复位：清除 roll_adjust、腿高基准、运动积分与 PID。</p>
+
+      <h3>8.3 坐下模式 SIT</h3>
+      <div class="flow">PREPARE → 舵机力矩模式 2（位置保持）
+MOVING → 左右电机 −0.2，机身前倾
+         退出条件：|pitch| ≥ 0.25 rad 或超时 5 s → 关闭电机
+DONE → 可选 LS 关闭舵机力矩；RB 触发重新站起
+EXIT_PREPARE / EXIT_RECOVER → 同启动恢复流程
+EXIT → 回到 BALANCE</div>
+    </section>
+
+    <!-- 9. 跳跃 -->
+    <section id="jump">
+      <h2>9. 跳跃算法</h2>
+      <p class="file-ref">源码：<code>controller.cpp::jump_loop()</code></p>
+
+      <h3>9.1 状态序列</h3>
+      <div class="flow">PREPARE ──► PUSH ──► FLY ──► LAND ──► RECOVER ──► DONE
+  收腿预备    蹬地加速    伸腿腾空    落地缓冲    姿态/偏航恢复</div>
+
+      <h3>9.2 各阶段舵机动作</h3>
+      <table>
+        <thead>
+          <tr><th>阶段</th><th>左/右舵机目标</th><th>持续时间</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>PREPARE→PUSH</td><td>收腿：CENTER±60，速度 450</td><td>立即</td></tr>
+          <tr><td>PUSH→FLY</td><td>伸腿：MAX±20，速度 0（力矩蹬地）</td><td>原地 200 ms / 前跳 650 ms / 后跳 700 ms</td></tr>
+          <tr><td>FLY→LAND</td><td>收腿：CENTER±60</td><td>130 ms</td></tr>
+          <tr><td>LAND→RECOVER</td><td>保持</td><td>260 ms</td></tr>
+        </tbody>
+      </table>
+
+      <h3>9.3 跳跃线速度前馈</h3>
+      <p>在 PUSH 阶段，LQI 线速度参考由 <code>jump_linear_vel_cmd</code> 提供，幅值随时间线性爬升（ramp）：</p>
+      <table>
+        <thead>
+          <tr><th>方向</th><th>最大推送速度</th><th>爬升时间</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>向前 (+1)</td><td>0.40 m/s</td><td>160 ms</td></tr>
+          <tr><td>向后 (−1)</td><td>0.34 m/s</td><td>240 ms</td></tr>
+          <tr><td>原地 (0)</td><td>0</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <h3>9.4 跳跃偏航控制</h3>
+      <p>转向跳（X/B）目标偏航角为起跳时 yaw + 90°×方向。各阶段采用 <strong>前馈 + 比例反馈</strong>：</p>
+      <div class="formula">ω<sub>cmd</sub> = clamp(dir × ff_rate + Kp × Δyaw, ±ω<sub>max</sub>)</div>
+      <table>
+        <thead>
+          <tr><th>阶段</th><th>ff_rate</th><th>Kp</th><th>ω_max</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>PREPARE</td><td>0.2</td><td>1.0</td><td>0.6</td></tr>
+          <tr><td>PUSH</td><td>1.2</td><td>1.4</td><td>1.8</td></tr>
+          <tr><td>FLY</td><td>6.4</td><td>2.0</td><td>6.4</td></tr>
+          <tr><td>LAND</td><td>0</td><td>0.35</td><td>0.4</td></tr>
+          <tr><td>RECOVER</td><td>0</td><td>0.8</td><td>0.5</td></tr>
+        </tbody>
+      </table>
+      <p>带线速度但不转向的跳（Y/A）在腾空阶段用偏航保持（Kp=3.0）防止机身扭摆。</p>
+
+      <h3>9.5 RECOVER 退出条件</h3>
+      <p>同时满足姿态稳定（|pitch|&lt;0.18 rad，|pitch_rate|&lt;1.6 rad/s）与偏航到位（误差 &lt;5° 或宽松判据），并持续 80 ms；或强制超时 350 ms / 220 ms 快速退出。</p>
+    </section>
+
+    <!-- 10. 恢复 -->
+    <section id="recover">
+      <h2>10. 平衡恢复（Balance Recover）</h2>
+      <p>在启动站起、坐下后重新站起时调用，分两个阶段：</p>
+
+      <h3>10.1 准备阶段（350 ms）</h3>
+      <p>关闭平衡、转向与电机，清空运动参考，等待机械与传感器稳定。</p>
+
+      <h3>10.2 恢复阶段</h3>
+      <ul>
+        <li>开启平衡与电机，执行 <code>leg_loop()</code>，关闭转向。</li>
+        <li>LQI 只使用 pitch 两维（x₀、x₁），输出按时间 blend 渐入（220 ms）。</li>
+        <li>退出条件：|pitch|&lt;0.16 且 |pitch_rate|&lt;1.2 持续 140 ms，且总时长≥250 ms；或最长 2500 ms 强制退出。</li>
+      </ul>
+    </section>
+
+    <!-- 11. 传感器 -->
+    <section id="sensor">
+      <h2>11. 传感器与状态估计</h2>
+      <p class="file-ref">源码：<code>controller.cpp::sensor_update_proc()</code></p>
+
+      <table>
+        <thead>
+          <tr><th>状态量</th><th>计算公式</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>pitch_angle</td><td>mpu6050_dev.angle[1]</td></tr>
+          <tr><td>pitch_rate</td><td>mpu6050_dev.gyro[1]</td></tr>
+          <tr><td>yaw_angle</td><td>mpu6050_dev.angle[2]</td></tr>
+          <tr><td>yaw_rate</td><td>mpu6050_dev.gyro[2]</td></tr>
+          <tr><td>avg_linear_pos</td><td>−(θ<sub>L</sub>+θ<sub>R</sub>)·r/2</td></tr>
+          <tr><td>avg_linear_vel</td><td>−(ω<sub>L</sub>+ω<sub>R</sub>)·r/2</td></tr>
+        </tbody>
+      </table>
+      <p>轮半径 r = 0.0526/2 = 0.0263 m。负号将编码器正方向映射为机器人前进正方向。左右轮编码器为 AS5600 磁编码器，经 SimpleFOC 获取 <code>shaft_angle</code> 与 <code>shaft_velocity</code>。</p>
+    </section>
+
+    <!-- 12. 电机 -->
+    <section id="motor">
+      <h2>12. 电机驱动</h2>
+      <p class="file-ref">源码：<code>lib/devices/motor.cpp</code></p>
+      <ul>
+        <li>驱动：BLDCDriver3PWM，8 V 供电，Space Vector PWM。</li>
+        <li>电机：7 极对数，KV=100，线电阻 12.27 Ω。</li>
+        <li>控制模式：<code>MotionControlType::torque</code> + <code>TorqueControlType::voltage</code>。</li>
+        <li>LQI 输出经 <code>motor.move(torque_cmd)</code> 转为 q 轴电压指令；<code>motor_update_proc</code> 以 500 μs 周期执行 FOC 换相。</li>
+      </ul>
+      <p><code>enable_motor = 0</code> 时 FOC 不输出，用于坐下完成态等场景。</p>
+    </section>
+
+    <!-- 13. 参数 -->
+    <section id="params">
+      <h2>13. 关键参数表</h2>
+      <table>
+        <thead>
+          <tr><th>类别</th><th>参数</th><th>数值</th></tr>
+        </thead>
+        <tbody>
+          <tr><td rowspan="4">速度限制</td><td>max_linear_vel</td><td>0.6 m/s</td></tr>
+          <tr><td>后退比例</td><td>80%</td></tr>
+          <tr><td>max_steer_vel</td><td>4.0 rad/s</td></tr>
+          <tr><td>dead_zone</td><td>max_linear_vel × 5%</td></tr>
+          <tr><td rowspan="2">积分钳位</td><td>linear_vel_error</td><td>±0.38</td></tr>
+          <tr><td>yaw_rate_error</td><td>±0.55</td></tr>
+          <tr><td rowspan="3">车体模型</td><td>轮半径 r</td><td>0.0263 m</td></tr>
+          <tr><td>腿高范围</td><td>0.02 ~ 0.06 m</td></tr>
+          <tr><td>默认 leg_height_base</td><td>20（约 −10 最高，52 最低）</td></tr>
+          <tr><td rowspan="2">Roll PID</td><td>Kp / Ki</td><td>8 / 30</td></tr>
+          <tr><td>输出限幅</td><td>450</td></tr>
+          <tr><td>控制周期</td><td>主循环 / 传感器</td><td>1 ms</td></tr>
+          <tr><td>FOC 周期</td><td>motor_update</td><td>500 μs</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 14. 文件 -->
+    <section id="files">
+      <h2>14. 源码索引</h2>
+      <table>
+        <thead>
+          <tr><th>功能模块</th><th>文件路径</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>任务启动与调度</td><td><code>lib/system/start.cpp</code></td></tr>
+          <tr><td>模式状态机</td><td><code>lib/controller/fsm.cpp</code></td></tr>
+          <tr><td>LQI 主循环 / 各模式逻辑</td><td><code>lib/controller/controller.cpp</code></td></tr>
+          <tr><td>运动参考 / 增益调度 / 摄像头</td><td><code>lib/controller/controller_base.cpp</code></td></tr>
+          <tr><td>LQI 参数与增益多项式</td><td><code>lib/controller/algorithm/lqi.cpp</code></td></tr>
+          <tr><td>电机 FOC 初始化</td><td><code>lib/devices/motor.cpp</code></td></tr>
+          <tr><td>舵机参数与限位</td><td><code>lib/devices/sts3032.h</code></td></tr>
+          <tr><td>手柄 / 上位机输入</td><td><code>lib/devices/xbox_dev.cpp</code>、<code>host_data_processing.cpp</code></td></tr>
+          <tr><td>用户操作说明</td><td><code>README.md</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p style="color: var(--muted); font-size: 0.85rem; margin-top: 2rem;">
+      文档由源码自动分析生成 · Micro-Wheeled Leg Robot · 2026
+    </p>
+  </main>
+</div>
+</body>
+</html>
