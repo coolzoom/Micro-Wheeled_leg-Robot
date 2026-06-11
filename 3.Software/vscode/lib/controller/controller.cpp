@@ -340,7 +340,6 @@ void controller::leg_loop()
     if((buttons & BTN_LEFT) && !(buttons & ~BTN_LEFT)){roll_adjust -= 0.025f;}
     if((buttons & BTN_UP) && !(buttons & ~BTN_UP)){leg_height_base -= 0.025f;}
     if((buttons & BTN_DOWN) && !(buttons & ~BTN_DOWN)){leg_height_base += 0.025f;}
-    if(leg_height_base > (float)LEG_HEIGHT_BASE_MAX){leg_height_base = (float)LEG_HEIGHT_BASE_MAX;}
 
     float roll_angle = lpf_roll(mpu6050_dev.angle[0] / (float)PI * 180.0f);
     float leg_position_add = pid_roll_angle(roll_angle - roll_adjust);
