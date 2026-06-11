@@ -38,7 +38,6 @@ void controller::begin_balance_recover()
     balance_recover_prepare_timer = 0;
     balance_recover_timer = 0;
     balance_recover_ready_timer = 0;
-    pid_roll_angle.reset();
 }
 
 bool controller::balance_recover_prepare_loop(uint32_t tick)
@@ -195,29 +194,6 @@ void controller::lqi_loop(uint32_t tick)
         x[5] = 0.0f;
     }
 
-    const bool near_leg_lowest =
-        fsm_state_machine.mode == fsm::mode_state::BALANCE &&
-        !balance_recover_active &&
-        !jump_active &&
-        base_components.is_near_leg_lowest();
-    const bool no_motion_cmd =
-        fabsf(target_linear_vel) < dead_zone &&
-        fabsf(steer_axis * lqi_param.limit.max_steer_vel) < dead_zone;
-
-    if(near_leg_lowest)
-    {
-        // 最低位 IMU 俯仰偏置无法靠腿消除，减弱俯仰反馈避免轮子持续出力
-        const float pitch_blend = 0.35f;
-        x[0] *= pitch_blend;
-        x[1] *= pitch_blend;
-
-        if(no_motion_cmd)
-        {
-            x[2] = 0.0f;
-            x[4] = 0.0f;
-        }
-    }
-
     memcpy(x_debug, x, sizeof(x_debug));
 
     for(uint8_t i = 0; i < 2; i++)
@@ -228,18 +204,6 @@ void controller::lqi_loop(uint32_t tick)
             output[i] += lqi_param.feedback_gain[i][j] * x[j];
         }
         output[i] *= output_blend;
-    }
-
-    if(near_leg_lowest && no_motion_cmd)
-    {
-        const float output_deadband = 0.04f;
-        for(uint8_t i = 0; i < 2; i++)
-        {
-            if(fabsf(output[i]) < output_deadband)
-            {
-                output[i] = 0.0f;
-            }
-        }
     }
 
     memcpy(output_debug, output, sizeof(output_debug));
@@ -372,15 +336,6 @@ void controller::sit_loop(uint32_t tick)  // 坐下状态循环
 
 void controller::leg_loop()
 {
-    if(balance_recover_active)
-    {
-        // 站立恢复期间禁用 Roll PID，保持 INIT 伸腿位，避免饱和输出把腿推到最高点
-        sts3032.set(SERVO_LEFT, SERVO_LEFT_MIN, 1000, 0);
-        sts3032.set(SERVO_RIGHT, SERVO_RIGHT_MIN, 1000, 0);
-        sts3032.move();
-        return;
-    }
-
     if((buttons & BTN_RIGHT) && !(buttons & ~BTN_RIGHT)){roll_adjust += 0.025f;}
     if((buttons & BTN_LEFT) && !(buttons & ~BTN_LEFT)){roll_adjust -= 0.025f;}
     if((buttons & BTN_UP) && !(buttons & ~BTN_UP)){leg_height_base -= 0.025f;}
