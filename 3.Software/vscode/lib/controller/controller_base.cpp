@@ -1,5 +1,6 @@
 #include "controller_base.h"
 #include "controller.h"
+#include "sts3032.h"
 
 controller_base::controller_base(){}
 
@@ -40,6 +41,12 @@ float controller_base::leg_servo_count_to_height(void)
     last_value = h;
 
     return h;
+}
+
+bool controller_base::is_near_leg_lowest(void)
+{
+    // 仅根据用户调节的腿高基准判断，不用舵机位置（最高点/站立位会误判）
+    return ctrl->leg_height_base >= (float)LEG_HEIGHT_BASE_MAX - 0.5f;
 }
 
 void controller_base::update_linear_reference(float dt, float target_speed)
@@ -122,8 +129,14 @@ void controller_base::update_linear_reference(float dt, float target_speed)
         ctrl->lqi_param.ref.linear_vel = 0.0f;
     }
 
-    const bool freeze_linear_integral = linear_release_active;
-    if(!freeze_linear_integral)
+    const bool freeze_linear_integral =
+        linear_release_active ||
+        (zero_cmd && is_near_leg_lowest());
+    if(freeze_linear_integral && zero_cmd && is_near_leg_lowest())
+    {
+        ctrl->lqi_param.integral.linear_vel_error = 0.0f;
+    }
+    else if(!freeze_linear_integral)
     {
         ctrl->lqi_param.integral.linear_vel_error +=
             (ctrl->lqi_param.ref.linear_vel - ctrl->lqi_param.state.avg_linear_vel) * dt;

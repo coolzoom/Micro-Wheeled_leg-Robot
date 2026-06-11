@@ -12,6 +12,7 @@ class controller_base {
     public:
         void update_feedback_gain(float height);
         float leg_servo_count_to_height(void);
+        bool is_near_leg_lowest(void);
         void update_linear_reference(float dt, float target_speed);
         void update_yaw_reference(float dt, float target_speed);
         void reset_motion_reference();
