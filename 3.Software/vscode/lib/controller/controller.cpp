@@ -110,7 +110,8 @@ void controller::lqi_loop(uint32_t tick)
     const float steer_axis_deadband = 0.05f;
     const bool jump_active = (fsm_state_machine.mode == fsm::mode_state::JUMP);
 
-    base_components.update_feedback_gain(base_components.leg_servo_count_to_height());
+    const float leg_h = base_components.leg_servo_count_to_height();
+    base_components.update_feedback_gain(leg_h);
 
     float linear_axis = apply_axis_deadband(axes[3], linear_axis_deadband);
     float steer_axis = apply_axis_deadband(axes[0], steer_axis_deadband);
@@ -192,6 +193,14 @@ void controller::lqi_loop(uint32_t tick)
     {
         x[3] = 0.0f;
         x[5] = 0.0f;
+    }
+
+    // 腿高极限位 IMU 存在不可消除的机械倾角，衰减俯仰反馈避免轮子持续输出/抖动
+    if(!balance_recover_active && !jump_active)
+    {
+        const float pitch_blend = base_components.get_height_limit_blend(leg_h);
+        x[0] *= pitch_blend;
+        x[1] *= pitch_blend;
     }
 
     memcpy(x_debug, x, sizeof(x_debug));
@@ -340,6 +349,7 @@ void controller::leg_loop()
     if((buttons & BTN_LEFT) && !(buttons & ~BTN_LEFT)){roll_adjust -= 0.025f;}
     if((buttons & BTN_UP) && !(buttons & ~BTN_UP)){leg_height_base -= 0.025f;}
     if((buttons & BTN_DOWN) && !(buttons & ~BTN_DOWN)){leg_height_base += 0.025f;}
+    leg_height_base = constrain(leg_height_base, (float)LEG_HEIGHT_BASE_MIN, (float)LEG_HEIGHT_BASE_MAX);
 
     float roll_angle = lpf_roll(mpu6050_dev.angle[0] / (float)PI * 180.0f);
     float leg_position_add = pid_roll_angle(roll_angle - roll_adjust);

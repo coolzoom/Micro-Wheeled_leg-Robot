@@ -1,14 +1,20 @@
 #include "controller_base.h"
 #include "controller.h"
+#include "sts3032.h"
 
 controller_base::controller_base(){}
 
 void controller_base::update_feedback_gain(float height)
 {
-    if(fabsf(height - last_height) < 1.0e-4f){return;}
-    last_height = height;
+    // LQI 增益仅在标定腿高范围内插值，避免极限位外推导致增益过大/抖动
+    const float h = constrain(
+        height,
+        ctrl->lqi_param.car.leg_min_height,
+        ctrl->lqi_param.car.leg_max_height
+    );
 
-    const float h = height;
+    if(fabsf(h - last_height) < 1.0e-4f){return;}
+    last_height = h;
     const float h2 = h * h;
     const float h3 = h2 * h;
     for(uint8_t i = 0; i < 6; i++)
@@ -40,6 +46,59 @@ float controller_base::leg_servo_count_to_height(void)
     last_value = h;
 
     return h;
+}
+
+bool controller_base::is_leg_at_mechanical_limit(void)
+{
+    const int16_t margin = 10;
+    const int16_t left_pos = sts_servo_state[0].position;
+    const int16_t right_pos = sts_servo_state[1].position;
+
+    if(left_pos <= SERVO_LEFT_MIN + margin || left_pos >= SERVO_LEFT_MAX - margin)
+    {
+        return true;
+    }
+
+    if(right_pos <= SERVO_RIGHT_MAX + margin || right_pos >= SERVO_RIGHT_MIN - margin)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+float controller_base::get_height_limit_blend(float height)
+{
+    const float h_min = ctrl->lqi_param.car.leg_min_height;
+    const float h_max = ctrl->lqi_param.car.leg_max_height;
+    const float margin = 0.004f;
+    const float min_blend = 0.35f;
+
+    float blend = 1.0f;
+
+    if(height <= h_min)
+    {
+        blend = min_blend;
+    }
+    else if(height < h_min + margin)
+    {
+        blend = min_blend + (1.0f - min_blend) * (height - h_min) / margin;
+    }
+    else if(height >= h_max)
+    {
+        blend = min_blend;
+    }
+    else if(height > h_max - margin)
+    {
+        blend = min_blend + (1.0f - min_blend) * (h_max - height) / margin;
+    }
+
+    if(is_leg_at_mechanical_limit())
+    {
+        blend = fminf(blend, 0.45f);
+    }
+
+    return blend;
 }
 
 void controller_base::update_linear_reference(float dt, float target_speed)

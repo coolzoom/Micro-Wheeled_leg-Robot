@@ -12,6 +12,9 @@
 
 // 舵机位置限制参数，注意，该舵机中位于 2048，顺时针旋转时计数值增加，负载正方向增加，反之亦然
 #define LEG_HEIGHT_BASE 	20      // 腿部默认高度基准值，值越小，机身越高， 实测范围 -10（最高），52（最低）
+// 安全调节死区：距机械极限留出余量，避免 IMU 固有倾角导致 LQI 持续输出/抖动（可按实机微调）
+#define LEG_HEIGHT_BASE_MIN  5     // 机身最高侧下限（leg_height_base 不可再小）
+#define LEG_HEIGHT_BASE_MAX  40    // 机身最低侧上限（leg_height_base 不可再大）
 #define SERVO_CENTER        2048
 #define SERVO_LEFT_MIN  	(SERVO_CENTER + 40)     // 左舵机最低位置
 #define SERVO_RIGHT_MIN  	(SERVO_CENTER - 40)     // 右舵机最低位置
