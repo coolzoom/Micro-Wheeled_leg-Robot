@@ -12,6 +12,9 @@
 
 // 舵机位置限制参数，注意，该舵机中位于 2048，顺时针旋转时计数值增加，负载正方向增加，反之亦然
 #define LEG_HEIGHT_BASE 	20      // 腿部默认高度基准值，值越小，机身越高， 实测范围 -10（最高），52（最低）
+// 机械最低位：Roll=0 时左舵机触及 SERVO_LEFT_MIN(2088)，2048+8.4*(30-base)=2088 => base≈25.24，腿高 h≈48mm
+// 安全下限取机械最低上方 2mm（h≈46mm），对应 base≈23.6（dh/dbase≈1.23mm/单位）
+#define LEG_HEIGHT_BASE_MAX 23.6f
 #define SERVO_CENTER        2048
 #define SERVO_LEFT_MIN  	(SERVO_CENTER + 40)     // 左舵机最低位置
 #define SERVO_RIGHT_MIN  	(SERVO_CENTER - 40)     // 右舵机最低位置
